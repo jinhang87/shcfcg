@@ -6,7 +6,15 @@
 import scrapy
 
 
-class ShzfcgItem(scrapy.Item):
+class ShzfcgCategoryItem(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
-    pass
+    title = scrapy.Field()
+    url = scrapy.Field()
+    publishDate = scrapy.Field()
+    pathName = scrapy.Field()
+    districtName = scrapy.Field()
+    type = scrapy.Field()
+    budgetprice = scrapy.Field()
+    highprice = scrapy.Field()
+    winningprice = scrapy.Field()

@@ -63,9 +63,9 @@ ROBOTSTXT_OBEY = False
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'shzfcg.pipelines.ShzfcgPipeline': 300,
-#}
+ITEM_PIPELINES = {
+   'shzfcg.pipelines.ShzfcgPipeline': 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
@@ -89,3 +89,6 @@ ROBOTSTXT_OBEY = False
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 FEED_EXPORT_ENCODING = 'utf-8'
+
+MYSQL_DB = 'mysql+pymysql://shzfcg:111111@106.54.85.128:13306/shzfcg'
+LOG_FILE = './log.log'

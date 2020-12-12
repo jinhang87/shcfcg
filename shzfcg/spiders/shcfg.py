@@ -5,6 +5,32 @@ import uuid
 from urllib.parse import quote, unquote
 import re
 from bs4 import BeautifulSoup
+from items import ShzfcgCategoryItem
+
+cgtype = {
+    '单一来源公示': 'ZcyAnnouncement1',
+    '采购公告': 'ZcyAnnouncement2',
+    '更正公告': 'ZcyAnnouncement3',
+    '采购结果公告': 'ZcyAnnouncement4',
+    '采购合同公告': 'ZcyAnnouncement5',
+    '终止公告': 'ZcyAnnouncement6'
+}
+
+cgsubtype = {
+    '单一来源公示': 'ZcyAnnouncement3012',
+    '公开招标公告': 'ZcyAnnouncement3001',
+    '竞争性谈判公告': 'ZcyAnnouncement3002',
+    '竞争性磋商公告': 'ZcyAnnouncement3011',
+    '询价公告': 'ZcyAnnouncement3003',
+    '邀请招标资格预审公告': 'ZcyAnnouncement3008',
+    '邀请招标资格入围公告': 'ZcyAnnouncement3009',
+    '更正公告': 'ZcyAnnouncement3005',
+    '其他更正公告': 'ZcyAnnouncement3019',
+    '中标（成交）结果公告': 'ZcyAnnouncement3004',
+    '废标公告': 'ZcyAnnouncement3007',
+    '采购合同公告': 'ZcyAnnouncement3010',
+    '终止公告': 'ZcyAnnouncement3015',
+}
 
 
 class ShcfgSpider(scrapy.Spider):
@@ -17,12 +43,12 @@ class ShcfgSpider(scrapy.Spider):
         "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
     }
-    body = {
-        "utm": "sites_group_front.7bab83d2.0.0.72ed89a03adf11eb8ed183573b4fc234",
-        "categoryCode": "ZcyAnnouncement3003",
-        "pageSize": 1,
-        "pageNo": 1
-    }
+
+    cur_type = '公开招标公告'
+    cur_total = -1
+    cur_pageSize = 15
+    cur_pageNo = 1
+    cur_count = 0
 
     def parse(self, response):
         print(response)
@@ -52,22 +78,33 @@ class ShcfgSpider(scrapy.Spider):
             'sessionStartTime'] = wondersLog_zwdt_sdk['LASTEVENT']['time'] = _tms_now
         print(wondersLog_zwdt_sdk)
         print(_zcy_log_client_uuid)
-        return quote('wondersLog_zwdt_sdk={};_zcy_log_client_uuid={}'.format(json.dumps(wondersLog_zwdt_sdk),
-                                                                             _zcy_log_client_uuid))
+        self.header['Cookie'] = quote(
+            'wondersLog_zwdt_sdk={};_zcy_log_client_uuid={}'.format(json.dumps(wondersLog_zwdt_sdk),
+                                                                    _zcy_log_client_uuid))
+
+    def get_body(self):
+        self.get_cookie()
+        body = {
+            "utm": "sites_group_front.7bab83d2.0.0.72ed89a03adf11eb8ed183573b4fc234",
+            "categoryCode": cgsubtype[self.cur_type],
+            "pageSize": self.cur_pageSize,
+            "pageNo": self.cur_pageNo
+        }
+        return body
 
     def start_requests(self):
-        cookie = self.get_cookie()
-        self.header['Cookie'] = cookie
-        yield scrapy.Request(url=self.category_url, method='POST', headers=self.header, body=json.dumps(self.body),
+        body = self.get_body()
+        yield scrapy.Request(url=self.category_url, method='POST', headers=self.header, body=json.dumps(body),
                              callback=self.parse_category)
 
     def parse_category(self, response):
+        print(self.crawler.stats.get_stats())
         print(response)
-        print(response.headers)
-        print(response.body)
+        #print(response.headers)
+        #print(response.body)
         body = json.loads(response.body)
-        print(body)
-        print(body['hits']['hits'])
+        #print(body)
+        #print(body['hits']['hits'])
 
         header = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
@@ -76,15 +113,28 @@ class ShcfgSpider(scrapy.Spider):
         }
 
         if 'hits' in body and 'hits' in body['hits']:
+            self.cur_total = body['hits']['total']
             for hit in body['hits']['hits']:
                 print(hit)
-                print(hit['_source']['pathName'])
-                print(hit['_source']['districtName'])
-                print(hit['_source']['title'])
-                print(hit['_source']['url'])
                 url = self.base_url + hit['_source']['url']
-                yield scrapy.Request(url=url, method='GET', headers=header, body=json.dumps(self.body),
-                                     callback=self.parse_info)
+                item = {
+                    'title': hit['_source']['title'],
+                    'publishDate': hit['_source']['publishDate'],
+                    'url': url,
+                    'pathName': hit['_source']['pathName'],
+                    'districtName': hit['_source']['districtName'],
+                    'type': self.cur_type
+                }
+                yield scrapy.Request(url=url, method='GET', headers=header,
+                                     callback=self.parse_info, meta=item)
+            self.cur_pageNo += 1
+            self.log('当前读取记录{}/{}，页数{}/{}，继续更新'.format(self.cur_count, self.cur_total, self.cur_pageNo,
+                                                    int(self.cur_total / self.cur_pageSize)+1))
+            if self.cur_total > (self.cur_pageNo-1) * self.cur_pageSize or self.cur_total == -1:
+                body = self.get_body()
+                yield scrapy.Request(url=self.category_url, method='POST', headers=self.header, body=json.dumps(body),
+                                     callback=self.parse_category)
+
 
     def parse_info(self, response):
         print(response)
@@ -98,26 +148,39 @@ class ShcfgSpider(scrapy.Spider):
         budgetprice = self.get_price(['预算金额：'], content)
         highprice = self.get_price(['最高限价（如有）：'], content)
         winningprice = self.get_price(['中标（成交）金额：', '中标金额：', '成交金额：'], content)
-        
+
+        item = ShzfcgCategoryItem()
+        item['title'] = response.meta['title']
+        item['publishDate'] = response.meta['publishDate']
+        item['url'] = response.meta['url']
+        item['pathName'] = response.meta['pathName']
+        item['districtName'] = response.meta['districtName']
+        item['type'] = response.meta['type']
+        item['budgetprice'] = budgetprice
+        item['highprice'] = highprice
+        item['winningprice'] = winningprice
+
+        self.cur_count += 1
+        yield item
 
     def get_price(self, heads, text):
-        #text = re.sub(r'<.*?>', '', text)
-        #print(text)
+        # text = re.sub(r'<.*?>', '', text)
+        # print(text)
 
         li_head = ['(?<={})'.format(head) for head in heads]
         str_head = "|".join(li_head)
-        print(str_head)
+        # print(str_head)
 
         str_regexp = r'({})(\s*\d*(\.\d+)?\s*)(.\S*)'.format(str_head)
 
-        print(str_regexp)
+        # print(str_regexp)
         p = re.compile(str_regexp)
         m = p.search(text)
-        print(m)
+        # print(m)
         if not m:
             return -1
-        print('m={},0={}'.format(m, m.group(0)))
-        print('1={},2={},3={},4={}'.format(m.group(1), m.group(2), m.group(3), m.group(4)))
+        self.log('m={},0={}'.format(m, m.group(0)))
+        self.log('1={},2={},3={},4={}'.format(m.group(1), m.group(2), m.group(3), m.group(4)))
 
         price = float(m.group(2).strip()) if m.group(2) and m.group(2).strip() else 0.0
 
