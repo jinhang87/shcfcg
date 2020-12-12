@@ -47,7 +47,7 @@ class ShcfgSpider(scrapy.Spider):
     cur_type = '公开招标公告'
     cur_total = -1
     cur_pageSize = 15
-    cur_pageNo = 600
+    cur_pageNo = 1
     cur_count = 0
 
     def parse(self, response):
@@ -98,8 +98,8 @@ class ShcfgSpider(scrapy.Spider):
                              callback=self.parse_category, errback=self.error_category)
 
     def parse_category(self, response):
-        print(self.crawler.stats.get_stats())
-        print(response)
+        self.log(self.crawler.stats.get_stats())
+        self.log(response)
         #print(response.headers)
         #print(response.body)
         body = json.loads(response.body)
@@ -123,7 +123,7 @@ class ShcfgSpider(scrapy.Spider):
                     'url': url,
                     'pathName': hit['_source']['pathName'],
                     'districtName': hit['_source']['districtName'],
-                    'type': self.cur_type
+                    'type': hit['_source']['pathName']
                 }
                 yield scrapy.Request(url=url, method='GET', headers=header,
                                      callback=self.parse_info, meta=item, errback=self.error_info)
