@@ -47,7 +47,7 @@ class ShcfgSpider(scrapy.Spider):
     cur_type = '公开招标公告'
     cur_total = -1
     cur_pageSize = 15
-    cur_pageNo = 1
+    cur_pageNo = 600
     cur_count = 0
 
     def parse(self, response):
@@ -95,7 +95,7 @@ class ShcfgSpider(scrapy.Spider):
     def start_requests(self):
         body = self.get_body()
         yield scrapy.Request(url=self.category_url, method='POST', headers=self.header, body=json.dumps(body),
-                             callback=self.parse_category)
+                             callback=self.parse_category, errback=self.error_category)
 
     def parse_category(self, response):
         print(self.crawler.stats.get_stats())
@@ -126,14 +126,14 @@ class ShcfgSpider(scrapy.Spider):
                     'type': self.cur_type
                 }
                 yield scrapy.Request(url=url, method='GET', headers=header,
-                                     callback=self.parse_info, meta=item)
+                                     callback=self.parse_info, meta=item, errback=self.error_info)
             self.cur_pageNo += 1
             self.log('当前读取记录{}/{}，页数{}/{}，继续更新'.format(self.cur_count, self.cur_total, self.cur_pageNo,
                                                     int(self.cur_total / self.cur_pageSize)+1))
             if self.cur_total > (self.cur_pageNo-1) * self.cur_pageSize or self.cur_total == -1:
                 body = self.get_body()
                 yield scrapy.Request(url=self.category_url, method='POST', headers=self.header, body=json.dumps(body),
-                                     callback=self.parse_category)
+                                     callback=self.parse_category, errback=self.error_category)
 
 
     def parse_info(self, response):
@@ -146,7 +146,7 @@ class ShcfgSpider(scrapy.Spider):
         content = obj.__str__()
         budgetprice = highprice = winningprice = 0
         budgetprice = self.get_price(['预算金额：'], content)
-        highprice = self.get_price(['最高限价（如有）：'], content)
+        highprice = self.get_price(['最高限价：', '最高限价（如有）：'], content)
         winningprice = self.get_price(['中标（成交）金额：', '中标金额：', '成交金额：'], content)
 
         item = ShzfcgCategoryItem()
@@ -188,3 +188,9 @@ class ShcfgSpider(scrapy.Spider):
             price = price / 10000
         # print(price)
         return price
+
+    def error_category(self, failure):
+        self.logger.error(repr(failure))
+
+    def error_info(self, failure):
+        self.logger.error(repr(failure))
