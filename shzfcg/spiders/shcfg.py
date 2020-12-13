@@ -43,7 +43,8 @@ class ShcfgSpider(scrapy.Spider):
         "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
     }
-
+    begin = '2020-01-01'
+    end = '2020-07-01'
     cur_type = '公开招标公告'
     cur_total = -1
     cur_pageSize = 15
@@ -87,6 +88,8 @@ class ShcfgSpider(scrapy.Spider):
         body = {
             "utm": "sites_group_front.7bab83d2.0.0.72ed89a03adf11eb8ed183573b4fc234",
             "categoryCode": cgsubtype[self.cur_type],
+            "publishDateBegin": self.begin,
+            "publishDateEnd": self.end,
             "pageSize": self.cur_pageSize,
             "pageNo": self.cur_pageNo
         }
