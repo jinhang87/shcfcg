@@ -1,6 +1,7 @@
 import scrapy
 import json
 from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
 import uuid
 from urllib.parse import quote, unquote
 import re
@@ -43,9 +44,11 @@ class ShcfgSpider(scrapy.Spider):
         "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
     }
-    begin = '2020-01-01'
-    end = '2020-07-01'
-    cur_type = '公开招标公告'
+    begin = '2018-01-01'
+    end = '2021-01-01'
+    cur_begin = end
+    cur_end = end
+    cur_type = '竞争性磋商公告'
     cur_total = -1
     cur_pageSize = 15
     cur_pageNo = 1
@@ -77,8 +80,8 @@ class ShcfgSpider(scrapy.Spider):
         _tms_now = int(datetime.now().timestamp() * 1000)
         wondersLog_zwdt_sdk['persistedTime'] = wondersLog_zwdt_sdk['updatedTime'] = wondersLog_zwdt_sdk[
             'sessionStartTime'] = wondersLog_zwdt_sdk['LASTEVENT']['time'] = _tms_now
-        print(wondersLog_zwdt_sdk)
-        print(_zcy_log_client_uuid)
+        #print(wondersLog_zwdt_sdk)
+        #print(_zcy_log_client_uuid)
         self.header['Cookie'] = quote(
             'wondersLog_zwdt_sdk={};_zcy_log_client_uuid={}'.format(json.dumps(wondersLog_zwdt_sdk),
                                                                     _zcy_log_client_uuid))
@@ -88,8 +91,8 @@ class ShcfgSpider(scrapy.Spider):
         body = {
             "utm": "sites_group_front.7bab83d2.0.0.72ed89a03adf11eb8ed183573b4fc234",
             "categoryCode": cgsubtype[self.cur_type],
-            "publishDateBegin": self.begin,
-            "publishDateEnd": self.end,
+            "publishDateBegin": self.cur_begin,
+            "publishDateEnd": self.cur_end,
             "pageSize": self.cur_pageSize,
             "pageNo": self.cur_pageNo
         }
@@ -131,12 +134,26 @@ class ShcfgSpider(scrapy.Spider):
                 yield scrapy.Request(url=url, method='GET', headers=header,
                                      callback=self.parse_info, meta=item, errback=self.error_info)
             self.cur_pageNo += 1
-            self.log('当前读取记录{}/{}，页数{}/{}，继续更新'.format(self.cur_count, self.cur_total, self.cur_pageNo,
-                                                    int(self.cur_total / self.cur_pageSize)+1))
-            if self.cur_total > (self.cur_pageNo-1) * self.cur_pageSize or self.cur_total == -1:
+            dt_cur_begin = datetime.strptime(self.cur_begin, '%Y-%m-%d')
+            dt_begin = datetime.strptime(self.begin, '%Y-%m-%d')
+
+            if self.cur_total > (self.cur_pageNo-1) * self.cur_pageSize or (self.cur_total == -1):
+                self.log('(记录)当前读取{}/{}，页数{}/{}，日期{}-{}，继续更新'.format(self.cur_count, self.cur_total, self.cur_pageNo,
+                                                                   (int(self.cur_total / self.cur_pageSize) + 1), self.cur_begin, self.cur_end))
                 body = self.get_body()
                 yield scrapy.Request(url=self.category_url, method='POST', headers=self.header, body=json.dumps(body),
                                      callback=self.parse_category, errback=self.error_category)
+            elif self.cur_total < (self.cur_pageNo-1) * self.cur_pageSize and dt_cur_begin > dt_begin:
+                self.cur_begin = (dt_cur_begin + relativedelta(months=-1)).strftime('%Y-%m-%d')
+                self.cur_end = dt_cur_begin.strftime('%Y-%m-%d')
+                self.cur_total = -1
+                self.cur_pageNo = 1
+                self.cur_count = 0
+                self.log('(记录)重置搜索条件{} - {}'.format(self.cur_begin, self.cur_end))
+                body = self.get_body()
+                yield scrapy.Request(url=self.category_url, method='POST', headers=self.header, body=json.dumps(body),
+                                     callback=self.parse_category, errback=self.error_category)
+
 
 
     def parse_info(self, response):
