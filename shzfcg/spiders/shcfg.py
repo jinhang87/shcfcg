@@ -80,8 +80,8 @@ class ShcfgSpider(scrapy.Spider):
         _tms_now = int(datetime.now().timestamp() * 1000)
         wondersLog_zwdt_sdk['persistedTime'] = wondersLog_zwdt_sdk['updatedTime'] = wondersLog_zwdt_sdk[
             'sessionStartTime'] = wondersLog_zwdt_sdk['LASTEVENT']['time'] = _tms_now
-        #print(wondersLog_zwdt_sdk)
-        #print(_zcy_log_client_uuid)
+        # print(wondersLog_zwdt_sdk)
+        # print(_zcy_log_client_uuid)
         self.header['Cookie'] = quote(
             'wondersLog_zwdt_sdk={};_zcy_log_client_uuid={}'.format(json.dumps(wondersLog_zwdt_sdk),
                                                                     _zcy_log_client_uuid))
@@ -106,11 +106,11 @@ class ShcfgSpider(scrapy.Spider):
     def parse_category(self, response):
         self.log(self.crawler.stats.get_stats())
         self.log(response)
-        #print(response.headers)
-        #print(response.body)
+        # print(response.headers)
+        # print(response.body)
         body = json.loads(response.body)
-        #print(body)
-        #print(body['hits']['hits'])
+        # print(body)
+        # print(body['hits']['hits'])
 
         header = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
@@ -137,13 +137,14 @@ class ShcfgSpider(scrapy.Spider):
             dt_cur_begin = datetime.strptime(self.cur_begin, '%Y-%m-%d')
             dt_begin = datetime.strptime(self.begin, '%Y-%m-%d')
 
-            if self.cur_total > (self.cur_pageNo-1) * self.cur_pageSize or (self.cur_total == -1):
+            if self.cur_total > (self.cur_pageNo - 1) * self.cur_pageSize or (self.cur_total == -1):
                 self.log('(记录)当前读取{}/{}，页数{}/{}，日期{}-{}，继续更新'.format(self.cur_count, self.cur_total, self.cur_pageNo,
-                                                                   (int(self.cur_total / self.cur_pageSize) + 1), self.cur_begin, self.cur_end))
+                                                                     (int(self.cur_total / self.cur_pageSize) + 1),
+                                                                     self.cur_begin, self.cur_end))
                 body = self.get_body()
                 yield scrapy.Request(url=self.category_url, method='POST', headers=self.header, body=json.dumps(body),
                                      callback=self.parse_category, errback=self.error_category)
-            elif self.cur_total < (self.cur_pageNo-1) * self.cur_pageSize and dt_cur_begin > dt_begin:
+            elif self.cur_total <= (self.cur_pageNo - 1) * self.cur_pageSize and dt_cur_begin > dt_begin:
                 self.cur_begin = (dt_cur_begin + relativedelta(months=-1)).strftime('%Y-%m-%d')
                 self.cur_end = dt_cur_begin.strftime('%Y-%m-%d')
                 self.cur_total = -1
@@ -153,8 +154,6 @@ class ShcfgSpider(scrapy.Spider):
                 body = self.get_body()
                 yield scrapy.Request(url=self.category_url, method='POST', headers=self.header, body=json.dumps(body),
                                      callback=self.parse_category, errback=self.error_category)
-
-
 
     def parse_info(self, response):
         print(response)
