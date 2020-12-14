@@ -15,6 +15,7 @@ class ShzfcgCategoryItem(scrapy.Item):
     pathName = scrapy.Field()
     districtName = scrapy.Field()
     type = scrapy.Field()
+    supplier = scrapy.Field()
     budgetprice = scrapy.Field()
     highprice = scrapy.Field()
     winningprice = scrapy.Field()

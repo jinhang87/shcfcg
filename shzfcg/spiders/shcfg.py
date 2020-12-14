@@ -7,6 +7,7 @@ from urllib.parse import quote, unquote
 import re
 from bs4 import BeautifulSoup
 from items import ShzfcgCategoryItem
+import html
 
 cgtype = {
     '单一来源公示': 'ZcyAnnouncement1',
@@ -44,11 +45,11 @@ class ShcfgSpider(scrapy.Spider):
         "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
     }
-    begin = '2018-01-01'
-    end = '2021-01-01'
+    begin = '2020-12-01'
+    end = '2020-12-01'
     cur_begin = end
     cur_end = end
-    cur_type = '竞争性磋商公告'
+    cur_type = '公开招标公告'
     cur_total = -1
     cur_pageSize = 15
     cur_pageNo = 1
@@ -162,7 +163,11 @@ class ShcfgSpider(scrapy.Spider):
         text = response.body.decode('utf-8')
         soup = BeautifulSoup(text, 'html.parser')
         obj = soup.find('input', attrs={"name": "articleDetail"})
-        content = obj.__str__()
+        content = obj.attrs['value'].__str__()
+        content = html.unescape(content)
+        print(content)
+        d_content = json.loads(content)
+        print(d_content['author'])
         budgetprice = highprice = winningprice = 0
         budgetprice = self.get_price(['预算金额：'], content)
         highprice = self.get_price(['最高限价：', '最高限价（如有）：'], content)
@@ -175,6 +180,7 @@ class ShcfgSpider(scrapy.Spider):
         item['pathName'] = response.meta['pathName']
         item['districtName'] = response.meta['districtName']
         item['type'] = response.meta['type']
+        item['supplier'] = d_content['author']
         item['budgetprice'] = budgetprice
         item['highprice'] = highprice
         item['winningprice'] = winningprice

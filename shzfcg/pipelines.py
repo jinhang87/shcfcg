@@ -99,7 +99,7 @@ class ShzfcgPipeline:
         categoryItem = copy.deepcopy(item)
         if isinstance(categoryItem, ShzfcgCategoryItem):
             time = datetime.fromtimestamp(item["publishDate"] / 1000).strftime("%Y-%m-%d %H:%M:%S")
-            bid = Bid(title=item["title"], href=item["url"], time=time, supplier="",
+            bid = Bid(title=item["title"], href=item["url"], time=time, supplier=item['supplier'],
                       agent="", area='上海', county=item["districtName"], type=item['type'],
                       budgetprice=item['budgetprice'], highprice=item['highprice'], winningprice=item['winningprice'])
             self.bid_upsert(bid)
